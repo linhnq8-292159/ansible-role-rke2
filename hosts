@@ -1,0 +1,10 @@
+[masters]
+k8s-06 rke_type=server
+
+[workers]
+k8s-07 rke2_type=agent
+k8s-08 rke2_type=agent
+
+[k8s_cluster:children]
+masters
+workers
