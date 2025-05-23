@@ -1,0 +1,5 @@
+- name: Uninstall rke2
+  hosts: k8s_cluster
+  become: true
+  command:
+  

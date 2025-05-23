@@ -1,10 +1,26 @@
-[masters]
-k8s-06 rke_type=server
-
-[workers]
-k8s-07 rke2_type=agent
-k8s-08 rke2_type=agent
-
-[k8s_cluster:children]
-masters
-workers
+all:
+  children:
+    k8s_masters:
+      hosts:
+        k8s-01:
+          rke2_type: server
+        k8s-02:
+          rke2_type: server
+        k8s-03:
+          rke2_type: server
+    k8s_workers:
+      hosts:
+        k8s-04:
+          rke2_type: agent
+        k8s-05:
+          rke2_type: agent
+        k8s-06:
+          rke2_type: agent
+        k8s-07:
+          rke2_type: agent 
+        k8s-08:
+          rke2_type: agent
+    k8s_cluster:
+      children:
+        k8s_masters:
+        k8s_workers:

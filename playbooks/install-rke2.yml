@@ -1,0 +1,35 @@
+---
+- name: Install RKE2 HA Cluster with Cilium
+  hosts: k8s_cluster
+  become: true
+  roles:
+    - role: ../ansible-role-rke2
+  vars:
+    rke2_cluster_name: k8s_cluster
+    rke2_servers_group_name: k8s_masters
+    rke2_agents_group_name: k8s_workers
+    rke2_version: v1.33.0+rke2r1  # Phiên bản mới nhất của RKE2
+    rke2_ha_mode: true
+    rke2_ha_mode_keepalived: false
+    rke2_ha_mode_kubevip: true
+    rke2_api_ip: "172.16.30.11"  # VIP cho API server
+    rke2_token: "your-secure-token-here"  # Thay đổi token này
+    rke2_api_cidr: 24
+    rke2_kubevip_image: ghcr.io/kube-vip/kube-vip:v0.9.1
+    rke2_apiserver_dest_port: 6443
+    rke2_server_node_taints:
+      - 'CriticalAddonsOnly=true:NoExecute'
+    rke2_cluster_cidr:
+      - 172.16.0.0/18
+    rke2_service_cidr:
+      - 172.16.30.0/18
+    rke2_disable:
+      - rke2-canal
+      - rke2-calico
+      - rke2-multus
+      - rke2-kube-proxy
+    rke2_cni:
+      - cilium
+    rke2_custom_manifests: 
+      - manifests/rke2-cilium.yml
+  
