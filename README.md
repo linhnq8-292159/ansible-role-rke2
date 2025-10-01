@@ -22,9 +22,10 @@ The Role can install the RKE2 in 3 modes:
 
 > It is possible to upgrade RKE2 by changing `rke2_version` variable and re-running the playbook with this role. During the upgrade process the RKE2 service on the nodes will be restarted one by one. The Ansible Role will check if the node on which the service was restarted is in Ready state and only then proceed with restarting service on another Kubernetes node.
 
-## Requirements
+## Requirements for Anisble Controller
 
 * Ansible 2.10+
+* `netaddr` Python package
 
 ## Tested on
 
@@ -60,7 +61,7 @@ rke2_ha_mode_kubevip: false
 # Kubernetes API and RKE2 registration IP address. The default Address is the IPv4 of the Server/Master node.
 # In HA mode choose a static IP which will be set as VIP in keepalived.
 # Or if the keepalived is disabled, use IP address of your LB.
-rke2_api_ip: "{{ hostvars[groups[rke2_servers_group_name].0]['ansible_default_ipv4']['address'] }}"
+rke2_api_ip: "{{ hostvars[groups[rke2_servers_group_name].0]['ansible_default_ipv4']['address'] | default(hostvars[groups[rke2_servers_group_name].0]['ansible_default_ipv6']['address'] ) }}"
 
 # optional option for RKE2 Server to listen on a private IP address & port
 # rke2_api_private_ip:
@@ -86,10 +87,10 @@ rke2_kubevip_cloud_provider_enable: true
 rke2_kubevip_svc_enable: true
 
 # Specify which image is used for kube-vip container
-rke2_kubevip_image: ghcr.io/kube-vip/kube-vip:v0.6.4
+rke2_kubevip_image: ghcr.io/kube-vip/kube-vip:v0.9.2
 
 # Specify which image is used for kube-vip cloud provider container
-rke2_kubevip_cloud_provider_image: ghcr.io/kube-vip/kube-vip-cloud-provider:v0.0.4
+rke2_kubevip_cloud_provider_image: ghcr.io/kube-vip/kube-vip-cloud-provider:v0.0.12
 
 # Enable kube-vip IPVS load balancer for control plane
 rke2_kubevip_ipvs_lb_enable: false
@@ -164,6 +165,9 @@ rke2_artifact:
   - rke2.linux-{{ rke2_architecture }}.tar.gz
   - rke2-images.linux-{{ rke2_architecture }}.tar.zst
 
+# Timeout for fetching artifacts in seconds
+rke2_artifact_fetch_timeout: 30
+
 # Changes the deploy strategy to install based on local artifacts
 rke2_airgap_mode: false
 
@@ -194,7 +198,7 @@ rke2_channel: stable
 
 # Do not deploy packaged components and delete any deployed components
 # Valid items: rke2-canal, rke2-coredns, rke2-ingress-nginx, rke2-metrics-server
-rke2_disable:
+rke2_disable: []
 
 # Option to disable kube-proxy
 disable_kube_proxy: false
@@ -210,10 +214,10 @@ rke2_cloud_provider_name: "external"
 
 # Path to custom manifests deployed during the RKE2 installation
 # It is possible to use Jinja2 templating in the manifests
-rke2_custom_manifests:
+rke2_custom_manifests: []
 
 # Path to static pods deployed during the RKE2 installation
-rke2_static_pods:
+rke2_static_pods: []
 
 # Configure custom Containerd Registry
 rke2_custom_registry_mirrors: []
@@ -240,7 +244,7 @@ rke2_etcd_snapshot_source_dir: etcd_snapshots
 # The etcd will be restored only during the initial run, so even if you will leave the the file name specified,
 # the etcd will remain untouched during the next runs.
 # You can either use this or set options in `rke2_etcd_snapshot_s3_options`
-rke2_etcd_snapshot_file:
+rke2_etcd_snapshot_file: ""
 
 # Etcd snapshot location
 rke2_etcd_snapshot_destination_dir: "{{ rke2_data_path }}/server/db/snapshots"
@@ -322,6 +326,9 @@ rke2_agents_group_name: workers
 # rke2_kube_scheduler_arg:
 #   - "bind-address=0.0.0.0"
 
+# Configure Ingress Controller (allowed values: ingress-nginx, traefik, none)
+rke2_ingress_controller: ingress-nginx
+
 # (Optional) Configure nginx via HelmChartConfig: https://docs.rke2.io/networking/networking_services#nginx-ingress-controller
 # rke2_ingress_nginx_values:
 #   controller:
@@ -342,7 +349,6 @@ rke2_wait_for_all_pods_to_be_healthy: false
 # The args passed to the kubectl wait command
 rke2_wait_for_all_pods_to_be_healthy_args: --for=condition=Ready -A --all pod --field-selector=metadata.namespace!=kube-system,status.phase!=Succeeded
 
-
 # Enable debug mode (rke2-service)
 rke2_debug: false
 
@@ -362,6 +368,10 @@ rke2_kubelet_config: {}
 # (Optional) Customize default kube-proxy arguments
 # rke2_kube_proxy_arg:
 #   - "proxy-mode=ipvs"
+
+# (Optional) Customize default kube-proxy extra mounts
+# rke2_kube_proxy_extra_mount:
+#   - "/lib/modules:/lib/modules:ro"
 
 # The value for the node-name configuration item
 rke2_node_name: "{{ inventory_hostname }}"
@@ -490,6 +500,10 @@ While changing server token is problematic, agent token can be rotated at will, 
 If the playbook starts to hang at the `Start RKE2 service on the rest of the nodes` task and then fails at the `Wait for remaining nodes to be ready` task, you probably have some limitations on you nodes' network.
 
 Please check the required *Inbound Rules for RKE2 Server Nodes* at the following link: <https://docs.rke2.io/install/requirements/#networking>.
+
+### RKE2 upgrade playbook failed due to an interrupted upgrade
+
+In case the new RKE2 version was installed but not started, rerun the playbook with the variable `rke2_allow_downgrade: true` to bypass the downgrade prevention check.
 
 ## License
 
